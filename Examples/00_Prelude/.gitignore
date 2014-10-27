@@ -1,0 +1,6 @@
+a.out
+core
+*.o
+ackermann_wrap.c
+ackermann.so
+ackermann
