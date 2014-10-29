@@ -21,5 +21,5 @@ switch -exact $argc {
 }
 
 for {set i 1} {$i <= $count} {incr i} {
-    puts [format "%6.4f" [expr {sqrt($i)}]]
+    puts [format "%6.4f" [expr sqrt($i)]]
 }

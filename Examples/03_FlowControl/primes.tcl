@@ -1,11 +1,12 @@
 #!/usr/bin/tclsh
 
 switch -exact $argc {
-    0 {
-        set count 10
+    0 {             
+        set count 10 
     }
-    1 {
-        if {[catch {expr [lindex $argv 0]} count]} {
+    1 {             
+        set argval [lindex $argv 0]
+        if {[catch {expr $argval} count]} {
             puts stderr "argument is not an integer"
             exit 1
         }
