@@ -17,16 +17,16 @@ proc printf {fmtspec args} {
 }
 
 proc fincr {var {inc 1}} {
+    upvar $var r_var
     if [catch {
         # zunaechst wird versuchsweise das eingebaute
         # incr aufgerufen, weil dies fuer ganzzahlige
         # Variablen vermutlich performanter ist ...
-        incr $var $inc
+        incr r_var $inc
     }] {
         # ... Fehler aufgetreten! Hmm, moeglicherweise
         # ist var keine Ganzzahl, also das ganze nochmal
         # zu Fuss:
-        upvar $var r_var
         set r_var [expr $r_var + $inc]
     }
 }
@@ -76,6 +76,6 @@ proc mathfuncs {range funcs} {
 
 mathfuncs {-1.6 .4 1.6} {sin cos}
 puts ""
-mathfuncs {-1 1} {abs}
+mathfuncs {-10 5 10} {abs}
 puts ""
 mathfuncs {100} {sqrt}

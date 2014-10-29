@@ -46,8 +46,8 @@ set white {[ \t]+}
 set listre "^${funcs}(${white}${funcs})*$"
 
 # Hinweis: Dieser Regulaere Ausdruck entspricht
-# eigentlich dem nachfolgenden, zu obigem jedoch
-# aequivalenten Diagramm:
+# dem nachfolgenden, zu obigem aequivalenten
+# Diagramm:
 #
 #                            (optional)
 #      (einmal)    +------------------------+

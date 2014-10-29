@@ -16,9 +16,10 @@ proc prtable {args} {
 		func ...
 	"
 	foreach {opt val} $args {
-		if ![string match "-\[a-zA-Z]*" $opt] {
-			break
-		}
+                switch -glob $opt {
+                    -* {}
+                    * break
+                }
 		if ![info exists r($opt)] {
 			error "$SYNTAX"
 		}
