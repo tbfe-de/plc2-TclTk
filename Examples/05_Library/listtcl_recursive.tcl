@@ -5,12 +5,15 @@
 # ================================================================
 
 proc list_tcl {dir} {
-    foreach fname [glob -nocomplain -directory $dir *.tcl] {
+    foreach subdir [glob -nocomplain -directory $dir -type d *] {
+        list_tcl $subdir
+    }
+    foreach fname [lsort [glob -nocomplain -directory $dir *.tcl]] {
         puts [string repeat "/" [expr [string length $fname] + 8]]
         puts "| File: $fname"
         puts [string repeat "\\" [expr [string length $fname] + 8]]
         if {[catch {open $fname} chan]} {
-            puts "ERROR: $chan
+            puts "ERROR: $chan"
             continue
         }
         set nr 0
@@ -19,9 +22,6 @@ proc list_tcl {dir} {
         }
         close $chan
         puts ""
-    }
-    foreach subdir [glob -nocomplain -directory $dir -type d *] {
-        list_tcl $subdir
     }
 }
 
