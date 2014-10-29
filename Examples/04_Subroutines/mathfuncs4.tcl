@@ -1,4 +1,4 @@
-#!/usr/local/bin/tclsh
+#!/usr/bin/tclsh
 
 # Fourth Example:
 # For a more convenient client interface the range can now
@@ -49,5 +49,7 @@ proc mathfuncs {range funcs} {
 }
 
 mathfuncs {-1.6 .4 1.6} {sin cos}
+puts ""
 mathfuncs {-1 1} {abs}
+puts ""
 mathfuncs {100} {sqrt}

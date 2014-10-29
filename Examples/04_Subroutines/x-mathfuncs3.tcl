@@ -1,4 +1,4 @@
-#!/usr/local/bin/tclsh
+#!/usr/bin/tclsh
 
 # Third Example:
 # Instead of individual arguments for lower limit, step,

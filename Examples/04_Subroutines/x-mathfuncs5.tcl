@@ -1,4 +1,4 @@
-#!/usr/local/bin/tclsh
+#!/usr/bin/tclsh
 
 # Fifth Example:
 # Incrementing the value is now done by a helper function
@@ -71,3 +71,9 @@ proc mathfuncs {range funcs} {
         printf "\n"
     }
 }
+
+mathfuncs {-1.6 .4 1.6} {sin cos}
+puts ""
+mathfuncs {-1 1} {abs}
+puts ""
+mathfuncs {100} {sqrt}

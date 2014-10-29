@@ -1,4 +1,4 @@
-#!/usr/local/bin/tclsh
+#!/usr/bin/tclsh
 
 # First Example:
 # A table of trigonometric functions will be generated.

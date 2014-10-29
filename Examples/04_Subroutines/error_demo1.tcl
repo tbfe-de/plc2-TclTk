@@ -1,4 +1,4 @@
-#!/usr/local/bin/tclsh
+#!/usr/bin/tclsh
 
 # 1. Beispiel -- Demonstration der Wirkung von
 # 'error' und 'catch':

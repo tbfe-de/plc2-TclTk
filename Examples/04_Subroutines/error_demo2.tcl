@@ -1,4 +1,4 @@
-#!/usr/local/bin/tclsh
+#!/usr/bin/tclsh
 
 # 2. Beispiel -- In der Kette von Funktionsaufrufen
 #	foo --> bar --> xxx --> yyy

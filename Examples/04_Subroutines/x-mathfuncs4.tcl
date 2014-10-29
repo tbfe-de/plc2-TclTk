@@ -1,4 +1,4 @@
-#!/usr/local/bin/tclsh
+#!/usr/bin/tclsh
 
 # Fourth Example:
 # For a more convenient client interface the range can now
