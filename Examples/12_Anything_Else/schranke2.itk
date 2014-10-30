@@ -1,0 +1,363 @@
+#!/usr/bin/itkwish
+
+# ================================================================================
+# Simulation: Parkhaus-Schranke mit FSM
+# ================================================================================
+#
+set HELP {
+  Das Programm demonstriert die Funktionalität einer "Finite-State-Machine" (FSM)
+  zur Steuerung einer Parkhaus-Schranke. Das GUI zeigt den "Grundriss" der Szene,
+  bestehend aus
+  	einer Ampel links oben (rot/gruen),
+	einer Schranke (in der Mitte, querliegend) mit
+	zwei zugehörigen Endeschaltern (linkes/rechtes Schrankenende, braun),
+	zwei Lichtschranken (je eine vor und hinter der Schranke, gelb) und
+	einer Kartenbox (links unten, blau)
+
+  Der Normalablauf ist wie folgt:
+  - ein Fahrzeug stoppt vor der Schranke und durchbricht die "Lichtschranke 1"
+    (= Klick in die zugehörige Check-Box);
+  - die Kartenbox bietet darauf hin ein Ticket zur Entnahme an
+    (= Anzeige "K", Entnahme durch Klick);
+  - die Schranke öffnet, danach schaltet die Ampel auf grün;
+  - das Fahrzeug fährt ein und durchbricht die "Lichschranke 2"
+    (= Klick in die zugehörige Check-Box)
+  - die Ampel schaltet auf rot zurück
+  - das Fahrzeug gibt die "Lichschschranke 1" und die "Lichtschranke 2" frei
+    (= Klick in die zugehörigen Check-Boxen)
+  - die Schranke schließt wieder
+  (In der Titelzeile wird dabei jeweils der aktuelle Zustand der FSM angezeigt.)
+
+  Öffnen und Schließen der Schranke erfolgt dabei einerseits autonom, wird aber
+  andererseits - realitätsnah - durch zwei Endeschalter gesteuert. Da diese auch
+  mit der Hand (= Maus) "berührbar" sind, lässt sich die Schranke ggf. im nicht
+  vollständig geöffneten oder geschlossenen Zustand anhalten. (Da die Steuerung
+  nicht "sehen" kann, muss sie auf die Rückmeldung der Endeschalter vertrauen.)
+
+  Ansatzweise ist auch bereits eine Fehlerbehandlung implementiert, die Zurzeit
+  aber lediglich erkennt, ob der "falsche" Endeschalter der Schranke anspricht.
+  In diesem Fall geht die FSM in einen Fehlerzustand, erkennbar daran, dass die
+  Schrankenbewegung angehalten und die Ampel komplett ausgeschaltet wird.
+
+  Die Aufhebung des Fehlerzustands ist derzeit nur über den Befehl
+	FSM::move RESET
+  im Test- und Debug-Fenster des Programms möglich. Dieses wird durch Klick mit
+  der rechten Maustaste an irgend eine Stelle im Haupt-Fenster geöffnet. Es
+  enthält eine Eingabezeile, in der sich über Kommandos wie
+  	Schranke::oeffnen
+	Schranke::schliessen
+	Ampel::rot
+	Ampel::gruen
+	Ampel::aus
+  auch Teilfunktionalitäten durchspielen kann. In einer Statuszeile unterhalb
+  der Eingabezeile werden dabei ggf. weitere Meldungen angezeigt.
+
+  Prinzipiell sind in der Eingabezeile beliebige Tcl-Befehle möglich, z.B. lässt
+  sich durch die Eingabe
+	set Schranke::geschwindigkeit 100
+  oder
+	set Schranke::geschwindigkeit 25
+  das Öffnen und Schließen der Schranke beschleunigen oder verlangsamen. Die
+  Statuszeile zeigt dabei den Return-Wert (oder eine evtl. Fehlermeldungen)
+  des eingegebenen Tcl-Befehls.
+
+  Abschlusstipp: Eine "weichere" Bewegung der Schranke lässt sich um den Preis
+  von etwas mehr CPU-Last leicht erreichen, in dem beim VRS-Aufruf (ganz am Ende
+  dieses Programms) kleinere Wert angegeben werden. Umgekehrt verringern größere
+  Werte die CPU-Last und führen zu einem "sprunghafteren" Bewegungsablauf.
+}
+
+# --------------------------------------------------------------------------------
+#                                                                   Hilfe anzeigen
+bind . <F1> {
+	if {[winfo exists .help]} {
+		raise .help
+	} else {
+		toplevel .help
+		wm title .help "Schranke: Bedienung"
+		wm protocol .help WM_DELETE_WINDOW {destroy .help; focus .}
+		pack [label .help.text -justify left -textvariable HELP]
+	}
+}
+
+# --------------------------------------------------------------------------------
+#                                                                Hardware-Sensoren
+proc EA {} {
+	DBG::status "Endeschalter Schranke AUF"
+	FSM::move EA
+}
+proc EZ {} {
+	DBG::status "Endeschalter Schranke ZU"
+	FSM::move EZ
+}
+proc KB {} {
+	DBG::status "Parkschein entnommen"
+	FSM::move KB
+}
+proc L1 {s} {
+	DBG::status "Lichtschranke 1 $s"
+	FSM::move L1 $s
+}
+proc L2 {s} {
+	DBG::status "Lichtschranke 2 $s"
+	FSM::move L2 $s
+}
+
+# --------------------------------------------------------------------------------
+#                                                                 Hardware-Aktoren
+class Ampel {
+	public common rot	aus
+	public common gruen	aus
+	public proc aus {} {
+		set rot	aus
+		set gruen aus
+	}
+	public proc rot {} {
+		set rot ein
+		set gruen aus
+	}
+	public proc gruen {} {
+		set rot aus
+		set gruen ein
+	}
+}
+
+class Schranke {
+	public common motor 		""
+	public common geschwindigkeit	50
+	public proc halt {} {
+		set motor ""
+	}
+	public proc oeffnen {} {
+		set motor links
+	}
+	public proc schliessen {} {
+		set motor rechts
+	}
+}
+
+class Kartenbox {
+	public common ticket "*"
+	public proc anbieten {} {
+		set ticket "K"
+	}
+	public proc entnommen {} {
+		set ticket "*"
+	}
+}
+
+# --------------------------------------------------------------------------------
+#                                                             Finite State Machine
+class FSM {
+	public common state
+	public proc init {} {
+		Ampel::rot
+		Schranke::schliessen
+		set state INIT
+	}
+	public proc move {event {p -}} {
+		switch -glob -- $state:$event {
+			INIT:EZ {
+				Schranke::halt
+				set state BEREIT
+			}
+			BEREIT:L1 {
+				if {$p == "unterbrochen"} {
+					Kartenbox::anbieten
+					set state TICKET
+				}
+			}
+			TICKET:KB {
+				Kartenbox::entnommen
+				Schranke::oeffnen
+				set state OEFFNEN
+			}
+			OEFFNEN:EA {
+				Schranke::halt
+				Ampel::gruen
+				set state EINFAHRT
+			}
+			EINFAHRT:L2 {
+				if {$p == "unterbrochen"} {
+					Ampel::rot
+				}
+				if {$p == "frei"} {
+					Schranke::schliessen
+					set state SCHLIESSEN
+				}
+			}
+			SCHLIESSEN:EZ {
+				Schranke::halt
+				set state BEREIT
+			}
+			OEFFNEN:EZ -
+			SCHLIESSEN:EA {
+				Schranke::halt
+				Ampel::aus
+				set state FEHLER
+			}
+			FEHLER:RESET {
+				Schranke::schliessen
+				Ampel::rot
+				set state INIT
+			}
+		}
+	}
+}
+
+# --------------------------------------------------------------------------------
+#                                                                GUI mit Animation
+class GUI {
+	private proc ampel {} {
+		frame .ampel -borderwidth 3 -relief raised
+		frame .ampel.oben\
+				-borderwidth 3 -relief sunken\
+				-height 16 -width 16
+		frame .ampel.unten\
+				-borderwidth 3 -relief sunken\
+				-height 16 -width 16
+		pack .ampel.oben .ampel.unten -fill both -expand 1
+		return ".ampel"
+	}
+	private proc ls {i} {
+		checkbutton .ls_$i\
+			-text "Lichtschranke $i"\
+			-onvalue "unterbrochen"\
+			-offvalue "frei"\
+			-bg yellow -command "
+				switch -glob \$ls_$i {
+				f* {.ls_$i configure -bg yellow}
+				u* {.ls_$i configure -bg grey}
+				}
+				L$i \$ls_$i
+			"
+		return ".ls_$i"
+	}
+	private proc schranke {} {
+		frame .schranke
+		pack [frame .schranke.ende_auf -width 10 -bg brown] -fill y -side left
+		pack [frame .schranke.ende_zu  -width 10 -bg brown] -fill y -side right
+		pack [frame .schranke.leer1 -width 260 -height 3]\
+		     [frame .schranke.durchfahrt]\
+		     [frame .schranke.leer2 -width 260 -height 3]\
+			-fill x -side top
+		frame .schranke.durchfahrt.balken -width 260 -height 6 -bg black
+		pack .schranke.durchfahrt.balken -side left
+		bind .schranke.ende_auf <Enter> EA
+		bind .schranke.ende_zu <Enter> EZ
+		return ".schranke"
+	}
+	private proc kartenbox {} {
+		button .kartenbox\
+			-bd 5 -width 1 -relief raised\
+			-bg blue -fg white -state disabled\
+			-command {KB}
+		return ".kartenbox"
+	}
+	public proc create {} {
+		grid [ampel]		-sticky  e
+		grid [ls 2]     -	-sticky news
+		grid [schranke] -
+		grid [ls 1]	-	-sticky news
+		grid [kartenbox]  
+		grid columnconfigure . 1 -weight 1
+
+		bind . <Button-3> DBG::create
+		wm title . "Schranke"
+	}
+}
+
+# --------------------------------------------------------------------------------
+#                                                          Debug- und Test-Fenster
+class DBG {
+	public proc create {} {
+		if {[winfo exists .dbgwin]} return
+		toplevel .dbgwin
+		wm title .dbgwin "Schranken-Test"
+		entry .dbgwin.command -width 40 -bg white
+		bind .dbgwin.command <Return> DBG::command
+		label .dbgwin.output
+		pack .dbgwin.command -fill x
+		pack .dbgwin.output -fill x
+	}
+	private proc command {} {
+		set cmd [.dbgwin.command get]
+		if {[catch {eval $cmd} ret]} {
+			status "ERROR: $ret"
+		} else {
+			status "=> $ret"
+		}
+		.dbgwin.command selection range 0 end
+
+	}
+	public proc status {message} {
+		if {[winfo exists .dbgwin]} {
+			.dbgwin.output configure -text $message
+		}
+	}
+}
+
+# --------------------------------------------------------------------------------
+#                                                       Virtual Reality Simulation
+class VRS {
+	private common tm 50
+	private proc kartenbox {} {
+		switch -- $Kartenbox::ticket {
+			"K" {
+				.kartenbox configure -state normal
+			}
+			"*" {
+				.kartenbox configure -state disabled
+			}
+		}
+		.kartenbox configure -text $Kartenbox::ticket
+	}
+	private proc ampel {} {
+		switch $Ampel::rot {
+			aus {.ampel.oben configure -bg lightgrey}
+			ein {.ampel.oben configure -bg red}
+		}
+		switch $Ampel::gruen {
+			aus {.ampel.unten configure -bg lightgrey}
+			ein {.ampel.unten configure -bg green}
+		}
+	}
+	private proc schranke {} {
+		set max [.schranke.leer1 cget -width]
+		set min [expr $max/10+1]
+		set pos [.schranke.durchfahrt.balken cget -width]
+		set stp [expr $Schranke::geschwindigkeit*$tm/1000*$max/100 + 1]
+		switch $Schranke::motor {
+			links {
+				if {[incr pos -$stp] <= $min} {
+					set pos $min
+					EA
+				}
+			}
+			rechts {
+				if {[incr pos +$stp] >= $max} {
+					set pos $max
+					EZ
+				}
+			}
+		}
+		.schranke.durchfahrt.balken configure -width $pos
+	}
+	public proc run {} {
+		wm title . "Schranke ($FSM::state)"
+		ampel
+		schranke
+		kartenbox
+		after $tm VRS::run
+	}
+}
+
+# --------------------------------------------------------------------------------
+#                                                                   HAUPT-PROGRAMM
+GUI::create			;# Grafisches User-Interface anlegen
+FSM::init			;# Finite State Machine initialisieren
+VRS::run 			;# Virtual Reality Simulation starten
+if {$argc == 1 &&
+    [lindex $argv 0] == "--dbgwin"} DBG::create	;# DBG-Window bei Start
+
+#END#

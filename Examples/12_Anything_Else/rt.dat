@@ -1,0 +1,21 @@
+# Beispieldaten
+
+Name:           Weitzel
+Vorname:        Martin
+Str:            Odenwaldring 70
+PLZ:            64380
+Ort:            Roﬂdorf
+
+a: 1
+b: 2
+
+#das ist der zweite Satz
+a: a2
+
+a: a3
+# und das war der dritte
+
+a: 123
+b: 456
+
+# FERTIG!
